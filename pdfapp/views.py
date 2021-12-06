@@ -3,6 +3,7 @@ from django.http import FileResponse
 from .forms import PdfExtractForm, PdfMergeForm, PdfReplaceForm
 import os
 import PyPDF2
+from PyPDF2 import PdfFileReader
 import zipfile
 
 
@@ -14,19 +15,35 @@ def pdf_single_page_extract(request):
             f = form.cleaned_data['file']
             pdfFileObj = PyPDF2.PdfFileReader(f)
             page_num_list = form.cleaned_data['page'].split(',')
-            zf = zipfile.ZipFile(os.path.join('media', 'extracted_pages.zip'), 'w')
+            zf = zipfile.ZipFile(os.path.join('pdf', 'extracted_pages.zip'), 'w')
+
+            # if pdfFileObj.isEncrypted:
+            #     try:
+            #         pdfFileObj.decrypt('')
+            #         print('File Decrypted (PyPDF2)')
+            #     except:
+            #         command = ("cp "+ zf +
+            #             " temp.pdf; qpdf --password='' --decrypt temp.pdf " + zf
+            #             + "; rm temp.pdf")
+            #         os.system(command)
+            #         print('File Decrypted (qpdf)')
+            #         fp = open(zf)
+            #         pdfFile = PdfFileReader(fp)
+                    
+            # else:
+            #     print('File Not Encrypted')
 
             for page_num in page_num_list:
                 page_index = int(page_num) - 1
                 pageObj = pdfFileObj.getPage(page_index)
                 pdfWriter = PyPDF2.PdfFileWriter()
                 pdfWriter.addPage(pageObj)
-                pdf_file_path = os.path.join('media', 'extracted_page_{}.pdf'.format(page_num))
+                pdf_file_path = os.path.join('pdf', 'extracted_page_{}.pdf'.format(page_num))
                 with open(pdf_file_path, 'wb') as pdfOutputFile:
                     pdfWriter.write(pdfOutputFile)
                 zf.write(pdf_file_path)
             zf.close()
-            response = FileResponse(open(os.path.join('media', 'extracted_pages.zip'), 'rb'))
+            response = FileResponse(open(os.path.join('pdf', 'extracted_pages.zip'), 'rb'))
             response['content_type'] = "application/zip"
             response['Content-Disposition'] = 'attachment; filename="extracted_pages.zip"'
             return response
@@ -34,7 +51,7 @@ def pdf_single_page_extract(request):
     else:
         form = PdfExtractForm()
 
-    return render(request, 'pdf/pdf_extract.html', {'form': form})
+    return render(request, 'pdf_extract.html', {'form': form})
 
 
 def pdf_range_extract(request):
@@ -49,7 +66,7 @@ def pdf_range_extract(request):
             page_end = int(page_range[1])
 
             # Extracted pdf file path
-            pdf_file_path = os.path.join('media', 'extracted_page_{}-{}.pdf'.format(page_start, page_end))
+            pdf_file_path = os.path.join('pdf', 'extracted_page_{}-{}.pdf'.format(page_start, page_end))
             pdfOutputFile = open(pdf_file_path, 'ab+')
 
             pdfWriter = PyPDF2.PdfFileWriter()
@@ -73,7 +90,7 @@ def pdf_range_extract(request):
     else:
         form = PdfExtractForm()
 
-    return render(request, 'pdf/pdf_range_extract.html', {'form': form})
+    return render(request, 'pdf_range_extract.html', {'form': form})
 
 
 # Create your views here.
@@ -95,9 +112,9 @@ def pdf_merge(request):
                     pdfFileObj = PyPDF2.PdfFileReader(f)
                     pdfMerger.append(pdfFileObj)
 
-            with open(os.path.join('media', 'merged_file.pdf'), 'wb') as pdfOutputFile:
+            with open(os.path.join('pdf', 'merged_file.pdf'), 'wb') as pdfOutputFile:
                 pdfMerger.write(pdfOutputFile)    
-            response = FileResponse(open(os.path.join('media', 'merged_file.pdf'), 'rb'))
+            response = FileResponse(open(os.path.join('pdf', 'merged_file.pdf'), 'rb'))
             response['content_type'] = "application/octet-stream"
             response['Content-Disposition'] = 'attachment; filename="merged_file.pdf"'
 
@@ -109,7 +126,7 @@ def pdf_merge(request):
     else:
         form = PdfMergeForm()
 
-    return render(request, 'pdf/pdf_merge.html', {'form': form})
+    return render(request, 'pdf_merge.html', {'form': form})
 
 
 def pdf_replace(request):
@@ -124,7 +141,7 @@ def pdf_replace(request):
             page_start = 1
             page_end = page - 1
 
-            pdfOutputFile1 = open(os.path.join('media', 'part_1.pdf'), 'wb+')
+            pdfOutputFile1 = open(os.path.join('pdf', 'part_1.pdf'), 'wb+')
             pdfWriter = PyPDF2.PdfFileWriter()
 
             for page_num in range(page_start, page_end + 1):
@@ -137,7 +154,7 @@ def pdf_replace(request):
             page_start = page + 1
             page_end = total_page
 
-            pdfOutputFile2 = open(os.path.join('media', 'part_2.pdf'), 'wb+')
+            pdfOutputFile2 = open(os.path.join('pdf', 'part_2.pdf'), 'wb+')
             pdfWriter = PyPDF2.PdfFileWriter()
 
             for page_num in range(page_start, page_end + 1):
@@ -150,17 +167,17 @@ def pdf_replace(request):
             pdfWriter.write(pdfOutputFile2)
             pdfOutputFile2.close()
 
-            f2_part_1 = open(os.path.join('media', 'part_1.pdf'), 'rb+')
-            f2_part_2 = open(os.path.join('media', 'part_2.pdf'), 'rb+')
+            f2_part_1 = open(os.path.join('pdf', 'part_1.pdf'), 'rb+')
+            f2_part_2 = open(os.path.join('pdf', 'part_2.pdf'), 'rb+')
 
             pdfMerger = PyPDF2.PdfFileMerger()
             pdfMerger.append(PyPDF2.PdfFileReader(f2_part_1))
             pdfMerger.append(PyPDF2.PdfFileReader(f1))
             pdfMerger.append(PyPDF2.PdfFileReader(f2_part_2))
 
-            with open(os.path.join('media', 'replaced_file.pdf'), 'wb') as pdfOutputFile:
+            with open(os.path.join('pdf', 'replaced_file.pdf'), 'wb') as pdfOutputFile:
                 pdfMerger.write(pdfOutputFile)
-            response = FileResponse(open(os.path.join('media', 'replaced_file.pdf'), 'rb'))
+            response = FileResponse(open(os.path.join('pdf', 'replaced_file.pdf'), 'rb'))
             response['content_type'] = "application/octet-stream"
             response['Content-Disposition'] = 'attachment; filename="replaced_file.pdf"'
 
@@ -172,4 +189,4 @@ def pdf_replace(request):
     else:
         form = PdfReplaceForm()
 
-    return render(request, 'pdf/pdf_replace.html', {'form': form})
+    return render(request, 'pdf_replace.html', {'form': form})

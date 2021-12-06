@@ -23,5 +23,5 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('pdf/', include('pdfapp.urls')),
+    path('', include('pdfapp.urls','pdf'),name='pdf'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
